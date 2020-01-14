@@ -344,6 +344,7 @@ function Pager({
           set(position, runSpring(clock, position, nextIndex, springConfig)),
         ]
       ),
+      debug('position', position),
       position,
     ])
   );
