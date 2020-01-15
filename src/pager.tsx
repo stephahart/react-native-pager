@@ -150,9 +150,13 @@ function Pager({
   clamp = {},
   clampDrag = {},
 }: iPager) {
-  const { animatedValue, animatedIndex, nextIndex } = useContext(PagerContext);
-
-  const [activeIndex, setActiveIndex] = useState(initialIndex);
+  const {
+    animatedValue,
+    animatedIndex,
+    nextIndex,
+    activeIndex,
+    setActiveIndex,
+  } = useContext(PagerContext);
 
   const numberOfScreens = Children.count(children);
 
@@ -207,6 +211,7 @@ function Pager({
       initialHeight = style.height;
     }
   }
+  console.log('RENDER PAGER 6');
 
   const [width, setWidth] = useState(initialWidth);
   const [height, setHeight] = useState(initialHeight);
@@ -237,6 +242,7 @@ function Pager({
   const clampDragNext = useAnimatedValue(clampDrag.next, REALLY_BIG_NUMBER);
   const animatedMaxIndex = useAnimatedValue(maxIndex);
   const animatedMinIndex = useAnimatedValue(minIndex);
+  console.log('RENDER PAGER 5');
 
   // pan event values to track
   const dragStart = memoize(new Value(0));
@@ -267,6 +273,7 @@ function Pager({
     }
   }, [activeIndex, minIndex, maxIndex]);
   */
+  console.log('RENDER PAGER 4');
 
   // animatedIndex represents pager position with an animated value
   // this value is used to compute the transformations of the container screen
@@ -313,8 +320,8 @@ function Pager({
               // update w/ value that will be snapped to
               // debug('about to call onChnage!', nextIndex),
               call([nextIndex], ([nextIndex]) => {
-                setActiveIndex(nextIndex);
-                onChange?.(nextIndex);
+                // setActiveIndex(nextIndex);
+                // onChange?.(nextIndex);
               }),
             ]),
           ]),
@@ -333,6 +340,8 @@ function Pager({
       animatedValue,
     ])
   );
+
+  console.log('RENDER PAGER 3');
 
   const clampPrevValue = useAnimatedValue(clamp.prev, numberOfScreens);
   const clampNextValue = useAnimatedValue(clamp.next, numberOfScreens);
@@ -353,6 +362,7 @@ function Pager({
   const containerTranslation = memoize(
     multiply(_animatedValue, dimension, animatedPageSize, -1)
   );
+  console.log('RENDER PAGER 2');
 
   // slice the children that are rendered by the <Pager />
   // this enables very large child lists to render efficiently
@@ -376,6 +386,8 @@ function Pager({
   // also has the benefit of covering 100% width of container, meaning better pan coverage on android
   const defaultContainerStyle =
     style && style.height ? { height: style.height } : undefined;
+
+  console.log('RENDER PAGER 1');
 
   function renderChildren() {
     // waiting for initial layout - except when testing
@@ -414,6 +426,8 @@ function Pager({
       );
     });
   }
+
+  console.log('RENDER PAGER');
 
   // extra Animated.Views below may seem redundant but they preserve applied styles e.g padding and margin
   // of the page views
@@ -565,12 +579,16 @@ interface iPagerContext {
   animatedValue: Animated.Value<number>;
   animatedIndex: Animated.Value<number>;
   nextIndex: Animated.Value<number>;
+  activeIndex: number;
+  setActiveIndex: (idx: number) => void;
 }
 
 const PagerContext = createContext<iPagerContext>({
   animatedValue: new Value(0),
   animatedIndex: new Value(0),
   nextIndex: new Value(0),
+  activeIndex: 0,
+  setActiveIndex: _ => null,
 });
 
 interface iPagerProvider {
@@ -582,14 +600,29 @@ const PagerProvider: React.FC<iPagerProvider> = ({
   children,
   initialIndex = 0,
 }) => {
+  const [activeIndex, setActiveIndex] = useState<number>(initialIndex);
   const animatedValue = memoize(new Value<number>(initialIndex));
   const animatedIndex = memoize(new Value<number>(initialIndex));
   const nextIndex = memoize(new Value<number>(initialIndex));
 
   return (
-    <PagerContext.Provider value={{ animatedValue, animatedIndex, nextIndex }}>
+    <PagerContext.Provider
+      value={{
+        animatedValue,
+        animatedIndex,
+        nextIndex,
+        activeIndex,
+        setActiveIndex,
+      }}
+    >
       {typeof children === 'function'
-        ? children({ animatedValue, animatedIndex, nextIndex })
+        ? children({
+            animatedValue,
+            animatedIndex,
+            nextIndex,
+            activeIndex,
+            setActiveIndex,
+          })
         : children}
     </PagerContext.Provider>
   );
