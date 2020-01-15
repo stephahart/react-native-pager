@@ -152,6 +152,8 @@ function Pager({
 }: iPager) {
   const { animatedValue, animatedIndex, nextIndex } = useContext(PagerContext);
 
+  const [activeIndex, setActiveIndex] = useState(initialIndex);
+
   const numberOfScreens = Children.count(children);
 
   const maxIndex =
@@ -310,13 +312,16 @@ function Pager({
               ),
               // update w/ value that will be snapped to
               // debug('about to call onChnage!', nextIndex),
-              call([nextIndex], ([nextIndex]) => onChange?.(nextIndex)),
+              call([nextIndex], ([nextIndex]) => {
+                setActiveIndex(nextIndex);
+                onChange?.(nextIndex);
+              }),
             ]),
           ]),
 
           // set animatedActiveIndex for next swipe event
           set(_animatedActiveIndex, nextIndex),
-          cond(defined(animatedIndex), set(animatedIndex, nextIndex)),
+          set(animatedIndex, nextIndex),
           set(
             animatedValue,
             runSpring(clock, animatedValue, nextIndex, springConfig)
@@ -324,7 +329,7 @@ function Pager({
         ]
       ),
       // debug('position', animatedValue),
-      cond(defined(animatedValue), set(animatedValue, animatedValue)),
+      set(animatedValue, animatedValue),
       animatedValue,
     ])
   );
@@ -360,8 +365,8 @@ function Pager({
   const adjacentChildren =
     adjacentChildOffset !== undefined
       ? children.slice(
-          Math.max(initialIndex - adjacentChildOffset, 0),
-          Math.min(initialIndex + adjacentChildOffset + 1, numberOfScreens)
+          Math.max(activeIndex - adjacentChildOffset, 0),
+          Math.min(activeIndex + adjacentChildOffset + 1, numberOfScreens)
         )
       : children;
 
@@ -394,6 +399,7 @@ function Pager({
 
       return (
         <Page
+          key={index}
           index={index}
           animatedIndex={_animatedValue}
           minimum={minimum}
