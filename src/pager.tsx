@@ -309,7 +309,7 @@ function Pager({
                 )
               ),
               // update w/ value that will be snapped to
-              debug('about to call onChnage!', nextIndex),
+              // debug('about to call onChnage!', nextIndex),
               call([nextIndex], ([nextIndex]) => onChange?.(nextIndex)),
             ]),
           ]),
@@ -323,7 +323,7 @@ function Pager({
           ),
         ]
       ),
-      debug('position', animatedValue),
+      // debug('position', animatedValue),
       cond(defined(animatedValue), set(animatedValue, animatedValue)),
       animatedValue,
     ])
