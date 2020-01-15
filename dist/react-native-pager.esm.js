@@ -540,9 +540,19 @@ function useAnimatedValue(value, defaultValue) {
 
 var PagerContext =
   /*#__PURE__*/
-  createContext({});
+  createContext({
+    animatedValue:
+      /*#__PURE__*/
+      new Value(0),
+    animatedIndex:
+      /*#__PURE__*/
+      new Value(0),
+    nextIndex:
+      /*#__PURE__*/
+      new Value(0),
+  });
 
-function PagerProvider(_ref7) {
+var PagerProvider = function PagerProvider(_ref7) {
   var children = _ref7.children,
     _ref7$initialIndex = _ref7.initialIndex,
     initialIndex = _ref7$initialIndex === void 0 ? 0 : _ref7$initialIndex;
@@ -566,7 +576,7 @@ function PagerProvider(_ref7) {
         })
       : children
   );
-}
+};
 
 function usePager() {
   var context = useContext(PagerContext);

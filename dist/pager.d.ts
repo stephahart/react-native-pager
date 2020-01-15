@@ -61,9 +61,6 @@ export interface iPager {
     prev?: number;
     next?: number;
   };
-  animatedValue: Animated.Value<number>;
-  animatedIndex: Animated.Value<number>;
-  nextIndex: Animated.Value<number>;
 }
 declare function Pager({
   onChange,
@@ -93,10 +90,7 @@ interface iPagerProvider {
   children: React.ReactNode;
   initialIndex: number;
 }
-declare function PagerProvider({
-  children,
-  initialIndex,
-}: iPagerProvider): JSX.Element;
+declare const PagerProvider: React.FC<iPagerProvider>;
 declare function usePager(): iPagerContext;
 declare function useIndex(): number;
 declare function useAnimatedIndex(): any;
