@@ -1,6 +1,6 @@
 {
-  "name": "@crowdlinker/react-native-pager",
-  "version": "0.2.1",
+  "name": "@stephahart/react-native-pager",
+  "version": "0.1.3",
   "main": "dist/index.js",
   "module": "dist/pager.esm.js",
   "typings": "dist/index.d.ts",
@@ -11,7 +11,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CrowdLinker/react-native-pager.git"
+    "url": "git+https://github.com/stephahart/react-native-pager.git"
   },
   "license": "MIT",
   "scripts": {
@@ -64,9 +64,9 @@
   },
   "description": "simple pager component for react-native",
   "bugs": {
-    "url": "https://github.com/CrowdLinker/react-native-pager/issues"
+    "url": "https://github.com/stephahart/react-native-pager/issues"
   },
-  "homepage": "https://github.com/CrowdLinker/react-native-pager#readme",
+  "homepage": "https://github.com/stephahart/react-native-pager#readme",
   "directories": {
     "example": "example",
     "test": "test"
