@@ -95,5 +95,8 @@
     "transform": {
       "^.+\\.(t)sx?$": "ts-jest"
     }
+  },
+  "dependencies": {
+    "@react-native-community/cli-platform-android": "^3.0.3"
   }
 }
