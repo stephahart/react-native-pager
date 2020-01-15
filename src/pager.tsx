@@ -118,9 +118,6 @@ export interface iPager {
     prev?: number;
     next?: number;
   };
-  animatedValue: Animated.Value<number>;
-  animatedIndex: Animated.Value<number>;
-  nextIndex: Animated.Value<number>;
 }
 const REALLY_BIG_NUMBER = 1000000000;
 
@@ -566,14 +563,21 @@ interface iPagerContext {
   nextIndex: Animated.Value<number>;
 }
 
-const PagerContext = createContext<iPagerContext>({} as any);
+const PagerContext = createContext<iPagerContext>({
+  animatedValue: new Value(0),
+  animatedIndex: new Value(0),
+  nextIndex: new Value(0),
+});
 
 interface iPagerProvider {
   children: React.ReactNode;
   initialIndex: number;
 }
 
-function PagerProvider({ children, initialIndex = 0 }: iPagerProvider) {
+const PagerProvider: React.FC<iPagerProvider> = ({
+  children,
+  initialIndex = 0,
+}) => {
   const animatedValue = memoize(new Value<number>(initialIndex));
   const animatedIndex = memoize(new Value<number>(initialIndex));
   const nextIndex = memoize(new Value<number>(initialIndex));
@@ -585,7 +589,7 @@ function PagerProvider({ children, initialIndex = 0 }: iPagerProvider) {
         : children}
     </PagerContext.Provider>
   );
-}
+};
 
 function usePager(): iPagerContext {
   const context = useContext(PagerContext);
