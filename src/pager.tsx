@@ -372,13 +372,13 @@ function Pager({
 
   // this will slice adjacentChildOffset number of children previous and after
   // the current active child index into a smaller child array
-  const adjacentChildren =
+  const adjacentChildren = children; /*
     adjacentChildOffset !== undefined
       ? children.slice(
           Math.max(activeIndex - adjacentChildOffset, 0),
           Math.min(activeIndex + adjacentChildOffset + 1, numberOfScreens)
         )
-      : children;
+      : children;*/
 
   // grabbing the height property from the style prop if there is no container style, this reduces
   // the chances of messing up the layout with containerStyle configurations
@@ -401,14 +401,14 @@ function Pager({
       // React.Children shifts these key values intelligently, but it
       // causes issues with the memoized values in <Page /> components
       let index = i;
-
+      /*
       if (adjacentChildOffset !== undefined) {
         index =
           initialIndex <= adjacentChildOffset
             ? i
             : initialIndex - adjacentChildOffset + i;
       }
-
+*/
       return (
         <Page
           key={index}
