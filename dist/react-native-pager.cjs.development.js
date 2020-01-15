@@ -57,6 +57,7 @@ var UNSET = -1;
 var TRUE = 1;
 var FALSE = 0;
 var event = Animated.event,
+  defined = Animated.defined,
   block = Animated.block,
   Value = Animated.Value,
   divide = Animated.divide,
@@ -94,8 +95,7 @@ var REALLY_BIG_NUMBER = 1000000000; // at its core, this component converts an a
 function Pager(_ref) {
   var _ref4, _style2;
 
-  var parentActiveIndex = _ref.activeIndex,
-    parentOnChange = _ref.onChange,
+  var onChange = _ref.onChange,
     _ref$initialIndex = _ref.initialIndex,
     initialIndex = _ref$initialIndex === void 0 ? 0 : _ref$initialIndex,
     children = _ref.children,
@@ -120,30 +120,18 @@ function Pager(_ref) {
     _ref$clamp = _ref.clamp,
     clamp = _ref$clamp === void 0 ? {} : _ref$clamp,
     _ref$clampDrag = _ref.clampDrag,
-    clampDrag = _ref$clampDrag === void 0 ? {} : _ref$clampDrag,
-    animatedValue = _ref.animatedValue;
-  var context = React.useContext(PagerContext);
-  var isControlled = parentActiveIndex !== undefined;
+    clampDrag = _ref$clampDrag === void 0 ? {} : _ref$clampDrag;
 
-  var _useState = React.useState(initialIndex),
-    _activeIndex = _useState[0],
-    _onChange = _useState[1];
+  var _useContext = React.useContext(PagerContext),
+    animatedValue = _useContext.animatedValue,
+    animatedIndex = _useContext.animatedIndex,
+    nextIndex = _useContext.nextIndex;
 
-  var activeIndex = isControlled
-    ? parentActiveIndex
-    : context
-    ? context[0]
-    : _activeIndex;
   var numberOfScreens = React.Children.count(children);
   var maxIndex =
     parentMax === undefined
       ? Math.ceil((numberOfScreens - 1) / pageSize)
       : parentMax;
-  var onChange = isControlled
-    ? parentOnChange
-    : context
-    ? context[1]
-    : _onChange;
   var dragX = memoize(new Value(0));
   var dragY = memoize(new Value(0));
   var gestureState = memoize(new Value(0));
@@ -192,13 +180,13 @@ function Pager(_ref) {
     }
   }
 
-  var _useState2 = React.useState(initialWidth),
-    width = _useState2[0],
-    setWidth = _useState2[1];
+  var _useState = React.useState(initialWidth),
+    width = _useState[0],
+    setWidth = _useState[1];
 
-  var _useState3 = React.useState(initialHeight),
-    height = _useState3[0],
-    setHeight = _useState3[1]; // assign references based on vertical / horizontal configurations
+  var _useState2 = React.useState(initialHeight),
+    height = _useState2[0],
+    setHeight = _useState2[1]; // assign references based on vertical / horizontal configurations
 
   var dimension = memoize(new Value(0));
   var targetDimension = type === 'vertical' ? 'height' : 'width';
@@ -222,21 +210,14 @@ function Pager(_ref) {
   var clampDragPrev = useAnimatedValue(clampDrag.prev, REALLY_BIG_NUMBER);
   var clampDragNext = useAnimatedValue(clampDrag.next, REALLY_BIG_NUMBER);
   var animatedMaxIndex = useAnimatedValue(maxIndex);
-  var animatedMinIndex = useAnimatedValue(minIndex); // set the initial position - priority to direct prop over context, and context over uncontrolled
-
-  var _position = memoize(new Value(activeIndex));
-
-  var position = animatedValue
-    ? animatedValue
-    : context
-    ? context[2]
-    : _position; // pan event values to track
+  var animatedMinIndex = useAnimatedValue(minIndex); // pan event values to track
 
   var dragStart = memoize(new Value(0));
   var swiping = memoize(new Value(FALSE));
-  var nextIndex = memoize(new Value(activeIndex));
-  var animatedActiveIndex = memoize(new Value(activeIndex));
-  var change = memoize(sub(animatedActiveIndex, position));
+
+  var _animatedActiveIndex = memoize(new Value(initialIndex));
+
+  var change = memoize(sub(_animatedActiveIndex, animatedValue));
   var absChange = memoize(abs(change));
   var shouldTransition = memoize(greaterThan(absChange, animatedThreshold));
   var indexChange = memoize(new Value(0)); // clamp drag values between the configured clamp props
@@ -251,25 +232,25 @@ function Pager(_ref) {
   );
   var clock = memoize(new Clock()); // snap focus to activeIndex when it updates
 
-  React.useEffect(
-    function() {
-      if (activeIndex >= minIndex && activeIndex <= maxIndex) {
-        nextIndex.setValue(activeIndex);
-      }
-    },
-    [activeIndex, minIndex, maxIndex]
-  ); // animatedIndex represents pager position with an animated value
+  /*
+  useEffect(() => {
+    if (activeIndex >= minIndex && activeIndex <= maxIndex) {
+      nextIndex.setValue(activeIndex);
+    }
+  }, [activeIndex, minIndex, maxIndex]);
+  */
+  // animatedIndex represents pager position with an animated value
   // this value is used to compute the transformations of the container screen
   // its also used to compute the offsets of child screens, and any other consumers
 
-  var animatedIndex = memoize(
+  var _animatedValue = memoize(
     block([
       cond(
         eq(gestureState, reactNativeGestureHandler.State.ACTIVE),
         [
           cond(clockRunning(clock), stopClock(clock)), // captures the initial drag value on first drag event
-          cond(swiping, 0, [set(dragStart, position), set(swiping, TRUE)]),
-          set(position, sub(dragStart, clampedDelta)),
+          cond(swiping, 0, [set(dragStart, animatedValue), set(swiping, TRUE)]),
+          set(animatedValue, sub(dragStart, clampedDelta)),
         ],
         [
           // on release -- figure out if the index needs to change, and what index it should change to
@@ -284,48 +265,57 @@ function Pager(_ref) {
                   greaterThan(change, 0),
                   min(
                     max(
-                      sub(animatedActiveIndex, indexChange),
+                      sub(_animatedActiveIndex, indexChange),
                       animatedMinIndex
                     ),
                     animatedMaxIndex
                   ),
                   min(
                     max(
-                      add(animatedActiveIndex, indexChange),
+                      add(_animatedActiveIndex, indexChange),
                       animatedMinIndex
                     ),
                     animatedMaxIndex
                   )
                 )
               ), // update w/ value that will be snapped to
-              call([nextIndex], function(_ref3) {
-                var nextIndex = _ref3[0];
-                return onChange(nextIndex);
-              }),
+              cond(
+                defined(onChange),
+                call([nextIndex], function(_ref3) {
+                  var nextIndex = _ref3[0];
+                  return onChange == null ? void 0 : onChange(nextIndex);
+                })
+              ),
             ]),
           ]), // set animatedActiveIndex for next swipe event
-          set(animatedActiveIndex, nextIndex),
-          set(position, runSpring(clock, position, nextIndex, springConfig)),
+          set(_animatedActiveIndex, nextIndex),
+          cond(defined(animatedIndex), set(animatedIndex, nextIndex)),
+          set(
+            animatedValue,
+            runSpring(clock, animatedValue, nextIndex, springConfig)
+          ),
         ]
       ),
-      debug('position', position),
-      position,
+      debug('position', animatedValue),
+      cond(defined(animatedValue), set(animatedValue, animatedValue)),
+      animatedValue,
     ])
   );
+
   var clampPrevValue = useAnimatedValue(clamp.prev, numberOfScreens);
   var clampNextValue = useAnimatedValue(clamp.next, numberOfScreens); // stop child screens from translating beyond the bounds set by clamp props:
 
   var minimum = memoize(
-    multiply(sub(animatedIndex, clampPrevValue), dimension)
+    multiply(sub(_animatedValue, clampPrevValue), dimension)
   );
   var maximum = memoize(
-    multiply(add(animatedIndex, clampNextValue), dimension)
+    multiply(add(_animatedValue, clampNextValue), dimension)
   );
   var animatedPageSize = useAnimatedValue(pageSize); // container offset -- this is the window of focus for active screens
   // it shifts around based on the animatedIndex value
 
   var containerTranslation = memoize(
-    multiply(animatedIndex, dimension, animatedPageSize, -1)
+    multiply(_animatedValue, dimension, animatedPageSize, -1)
   ); // slice the children that are rendered by the <Pager />
   // this enables very large child lists to render efficiently
   // the downside is that children are unmounted after they pass this threshold
@@ -337,8 +327,8 @@ function Pager(_ref) {
   var adjacentChildren =
     adjacentChildOffset !== undefined
       ? children.slice(
-          Math.max(activeIndex - adjacentChildOffset, 0),
-          Math.min(activeIndex + adjacentChildOffset + 1, numberOfScreens)
+          Math.max(initialIndex - adjacentChildOffset, 0),
+          Math.min(initialIndex + adjacentChildOffset + 1, numberOfScreens)
         )
       : children; // grabbing the height property from the style prop if there is no container style, this reduces
   // the chances of messing up the layout with containerStyle configurations
@@ -367,37 +357,24 @@ function Pager(_ref) {
 
       if (adjacentChildOffset !== undefined) {
         index =
-          activeIndex <= adjacentChildOffset
+          initialIndex <= adjacentChildOffset
             ? i
-            : activeIndex - adjacentChildOffset + i;
+            : initialIndex - adjacentChildOffset + i;
       }
 
       return React__default.createElement(
-        IndexProvider,
+        Page,
         {
           index: index,
-          key: index,
+          animatedIndex: _animatedValue,
+          minimum: minimum,
+          maximum: maximum,
+          dimension: dimension,
+          targetTransform: targetTransform,
+          targetDimension: targetDimension,
+          pageInterpolation: pageInterpolation,
         },
-        React__default.createElement(
-          FocusProvider,
-          {
-            focused: index === activeIndex,
-          },
-          React__default.createElement(
-            Page,
-            {
-              index: index,
-              animatedIndex: animatedIndex,
-              minimum: minimum,
-              maximum: maximum,
-              dimension: dimension,
-              targetTransform: targetTransform,
-              targetDimension: targetDimension,
-              pageInterpolation: pageInterpolation,
-            },
-            child
-          )
-        )
+        child
       );
     });
   } // extra Animated.Views below may seem redundant but they preserve applied styles e.g padding and margin
@@ -567,41 +544,29 @@ function useAnimatedValue(value, defaultValue) {
 
 var PagerContext =
   /*#__PURE__*/
-  React.createContext(undefined);
+  React.createContext({});
 
 function PagerProvider(_ref7) {
   var children = _ref7.children,
     _ref7$initialIndex = _ref7.initialIndex,
-    initialIndex = _ref7$initialIndex === void 0 ? 0 : _ref7$initialIndex,
-    parentActiveIndex = _ref7.activeIndex,
-    _ref7$onChange = _ref7.onChange,
-    parentOnChange =
-      _ref7$onChange === void 0
-        ? function() {
-            return console.warn(
-              '<PagerProvider /> should have an onChange() prop if it is controlled'
-            );
-          }
-        : _ref7$onChange;
-
-  var _useState4 = React.useState(initialIndex),
-    _activeIndex = _useState4[0],
-    _setActiveIndex = _useState4[1];
-
-  var isControlled = parentActiveIndex !== undefined;
-  var activeIndex = isControlled ? parentActiveIndex : _activeIndex;
-  var onChange = isControlled ? parentOnChange : _setActiveIndex;
-  var animatedIndex = memoize(new Value(activeIndex));
+    initialIndex = _ref7$initialIndex === void 0 ? 0 : _ref7$initialIndex;
+  var animatedValue = memoize(new Value(initialIndex));
+  var animatedIndex = memoize(new Value(initialIndex));
+  var nextIndex = memoize(new Value(initialIndex));
   return React__default.createElement(
     PagerContext.Provider,
     {
-      value: [activeIndex, onChange, animatedIndex],
+      value: {
+        animatedValue: animatedValue,
+        animatedIndex: animatedIndex,
+        nextIndex: nextIndex,
+      },
     },
     typeof children === 'function'
       ? children({
-          activeIndex: activeIndex,
-          onChange: onChange,
+          animatedValue: animatedValue,
           animatedIndex: animatedIndex,
+          nextIndex: nextIndex,
         })
       : children
   );
@@ -615,44 +580,11 @@ function usePager() {
   }
 
   return context;
-} // provide hook for child screens to access pager focus:
-
-var FocusContext =
-  /*#__PURE__*/
-  React__default.createContext(false);
-
-function FocusProvider(_ref8) {
-  var focused = _ref8.focused,
-    children = _ref8.children;
-  return React__default.createElement(
-    FocusContext.Provider,
-    {
-      value: focused,
-    },
-    children
-  );
-}
-
-function useFocus() {
-  var focused = React.useContext(FocusContext);
-  return focused;
 }
 
 var IndexContext =
   /*#__PURE__*/
   React__default.createContext(undefined);
-
-function IndexProvider(_ref9) {
-  var children = _ref9.children,
-    index = _ref9.index;
-  return React__default.createElement(
-    IndexContext.Provider,
-    {
-      value: index,
-    },
-    children
-  );
-}
 
 function useIndex() {
   var index = React.useContext(IndexContext);
@@ -662,18 +594,6 @@ function useIndex() {
   }
 
   return index;
-}
-
-function useOnFocus(fn) {
-  var focused = useFocus();
-  React.useEffect(
-    function() {
-      if (focused) {
-        fn();
-      }
-    },
-    [focused]
-  );
 }
 
 function useAnimatedIndex() {
@@ -980,8 +900,6 @@ function Progress(_ref5) {
   );
 }
 
-exports.FocusProvider = FocusProvider;
-exports.IndexProvider = IndexProvider;
 exports.Pager = Pager;
 exports.PagerContext = PagerContext;
 exports.PagerProvider = PagerProvider;
@@ -990,10 +908,8 @@ exports.Progress = Progress;
 exports.Slider = Slider;
 exports.interpolateWithConfig = interpolateWithConfig$1;
 exports.useAnimatedIndex = useAnimatedIndex;
-exports.useFocus = useFocus;
 exports.useIndex = useIndex;
 exports.useInterpolation = useInterpolation;
 exports.useOffset = useOffset;
-exports.useOnFocus = useOnFocus;
 exports.usePager = usePager;
 //# sourceMappingURL=react-native-pager.cjs.development.js.map

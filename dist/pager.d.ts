@@ -39,7 +39,6 @@ export interface iPageInterpolation {
     | iInterpolationFn;
 }
 export interface iPager {
-  activeIndex?: number;
   onChange?: (nextIndex: number) => void;
   initialIndex?: number;
   children: React.ReactNode[];
@@ -53,8 +52,6 @@ export interface iPager {
   adjacentChildOffset?: number;
   style?: ViewStyle;
   containerStyle?: ViewStyle;
-  animatedValue?: Animated.Value<number>;
-  animatedIndex?: Animated.Value<number>;
   type?: 'horizontal' | 'vertical';
   clamp?: {
     prev?: number;
@@ -64,10 +61,12 @@ export interface iPager {
     prev?: number;
     next?: number;
   };
+  animatedValue: Animated.Value<number>;
+  animatedIndex: Animated.Value<number>;
+  nextIndex: Animated.Value<number>;
 }
 declare function Pager({
-  activeIndex: parentActiveIndex,
-  onChange: parentOnChange,
+  onChange,
   initialIndex,
   children,
   springConfig,
@@ -83,47 +82,24 @@ declare function Pager({
   pageInterpolation,
   clamp,
   clampDrag,
-  animatedValue,
 }: iPager): JSX.Element;
-declare type iPagerContext = [
-  number,
-  (nextIndex: number) => void,
-  Animated.Value<number>
-];
-declare const PagerContext: React.Context<iPagerContext | undefined>;
+interface iPagerContext {
+  animatedValue: Animated.Value<number>;
+  animatedIndex: Animated.Value<number>;
+  nextIndex: Animated.Value<number>;
+}
+declare const PagerContext: React.Context<iPagerContext>;
 interface iPagerProvider {
   children: React.ReactNode;
-  initialIndex?: number;
-  activeIndex?: number;
-  onChange?: (nextIndex: number) => void;
+  initialIndex: number;
 }
 declare function PagerProvider({
   children,
   initialIndex,
-  activeIndex: parentActiveIndex,
-  onChange: parentOnChange,
 }: iPagerProvider): JSX.Element;
 declare function usePager(): iPagerContext;
-interface iFocusProvider {
-  children: React.ReactNode;
-  focused: boolean;
-}
-declare function FocusProvider({
-  focused,
-  children,
-}: iFocusProvider): JSX.Element;
-declare function useFocus(): boolean;
-interface iIndexProvider {
-  children: React.ReactNode;
-  index: number;
-}
-declare function IndexProvider({
-  children,
-  index,
-}: iIndexProvider): JSX.Element;
 declare function useIndex(): number;
-declare function useOnFocus(fn: Function): void;
-declare function useAnimatedIndex(): Animated.Value<number>;
+declare function useAnimatedIndex(): any;
 declare function useOffset(index: number): any;
 declare function useInterpolation(
   pageInterpolation: iPageInterpolation,
@@ -134,12 +110,8 @@ export {
   PagerProvider,
   PagerContext,
   usePager,
-  useFocus,
   useOffset,
-  useOnFocus,
   useIndex,
   useAnimatedIndex,
   useInterpolation,
-  IndexProvider,
-  FocusProvider,
 };
