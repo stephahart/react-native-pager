@@ -4,6 +4,7 @@ import React, {
   createContext,
   useContext,
   useEffect,
+  useMemo,
 } from 'react';
 import { StyleSheet, LayoutChangeEvent, ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -364,22 +365,6 @@ function Pager({
   );
   // console.log('RENDER PAGER 2');
 
-  // slice the children that are rendered by the <Pager />
-  // this enables very large child lists to render efficiently
-  // the downside is that children are unmounted after they pass this threshold
-  // it's an optional prop, however a default value of ~20 is set here to prevent
-  // possible performance bottlenecks to those not aware of the prop or what it does
-
-  // this will slice adjacentChildOffset number of children previous and after
-  // the current active child index into a smaller child array
-  const adjacentChildren = children; /*
-    adjacentChildOffset !== undefined
-      ? children.slice(
-          Math.max(activeIndex - adjacentChildOffset, 0),
-          Math.min(activeIndex + adjacentChildOffset + 1, numberOfScreens)
-        )
-      : children;*/
-
   // grabbing the height property from the style prop if there is no container style, this reduces
   // the chances of messing up the layout with containerStyle configurations
   // can be overridden by the prop itself, but its likely that this is what is intended most of the time
@@ -389,11 +374,30 @@ function Pager({
 
   // console.log('RENDER PAGER 1');
 
-  function renderChildren() {
+  const pages = useMemo(() => {
     // waiting for initial layout - except when testing
     if (width === UNSET) {
       return null;
     }
+
+    console.log('CREATE PAGES');
+    console.log(children);
+
+    // slice the children that are rendered by the <Pager />
+    // this enables very large child lists to render efficiently
+    // the downside is that children are unmounted after they pass this threshold
+    // it's an optional prop, however a default value of ~20 is set here to prevent
+    // possible performance bottlenecks to those not aware of the prop or what it does
+
+    // this will slice adjacentChildOffset number of children previous and after
+    // the current active child index into a smaller child array
+    const adjacentChildren =
+      adjacentChildOffset !== undefined
+        ? children.slice(
+            Math.max(activeIndex - adjacentChildOffset, 0),
+            Math.min(activeIndex + adjacentChildOffset + 1, numberOfScreens)
+          )
+        : children;
 
     return adjacentChildren.map((child: any, i) => {
       // use map instead of React.Children because we want to track
@@ -401,14 +405,14 @@ function Pager({
       // React.Children shifts these key values intelligently, but it
       // causes issues with the memoized values in <Page /> components
       let index = i;
-      /*
+
       if (adjacentChildOffset !== undefined) {
         index =
           initialIndex <= adjacentChildOffset
             ? i
             : initialIndex - adjacentChildOffset + i;
       }
-*/
+
       return (
         <Page
           key={index}
@@ -425,7 +429,7 @@ function Pager({
         </Page>
       );
     });
-  }
+  }, [children, width]);
 
   // console.log('RENDER PAGER');
 
@@ -466,7 +470,7 @@ function Pager({
                   transform: [{ [targetTransform]: containerTranslation }],
                 }}
               >
-                {renderChildren()}
+                {pages}
               </Animated.View>
             </Animated.View>
           </Animated.View>
