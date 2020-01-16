@@ -99,7 +99,6 @@ const {
 
 export interface iPager {
   onChange?: (nextIndex: number) => void;
-  initialIndex?: number;
   children: React.ReactNode[];
   springConfig?: Partial<SpringConfig>;
   pageInterpolation?: iPageInterpolation;
@@ -136,7 +135,6 @@ const REALLY_BIG_NUMBER = 1000000000;
 
 function Pager({
   onChange,
-  initialIndex = 0,
   children,
   springConfig,
   panProps = {},
@@ -144,7 +142,7 @@ function Pager({
   threshold = 0.1,
   minIndex = 0,
   maxIndex: parentMax,
-  adjacentChildOffset = 10,
+  adjacentChildOffset = 5,
   style,
   containerStyle,
   type = 'horizontal',
@@ -161,6 +159,8 @@ function Pager({
   } = useContext(PagerContext);
 
   const numberOfScreens = Children.count(children);
+  const initialIndex = memoize(activeIndex);
+  console.log('INITIAL INDEX IS ' + initialIndex);
 
   const maxIndex =
     parentMax === undefined
@@ -397,8 +397,7 @@ function Pager({
       return null;
     }
 
-    console.log('REFRESH PAGES');
-    console.log(children);
+    console.log('~~~~~~~ REFRESH PAGES ~~~~~~~~');
 
     // slice the children that are rendered by the <Pager />
     // this enables very large child lists to render efficiently
@@ -422,6 +421,8 @@ function Pager({
       // React.Children shifts these key values intelligently, but it
       // causes issues with the memoized values in <Page /> components
       let index = i + startIndex;
+
+      console.log('render ' + index);
 
       return (
         <Page
