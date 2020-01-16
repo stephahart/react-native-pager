@@ -160,7 +160,7 @@ function Pager({
 
   const numberOfScreens = Children.count(children);
   const initialIndex = memoize(activeIndex);
-  console.log('INITIAL INDEX IS ' + initialIndex);
+  // console.log('INITIAL INDEX IS ' + initialIndex);
 
   const maxIndex =
     parentMax === undefined
@@ -380,24 +380,18 @@ function Pager({
   // [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
   // adjacentOffset = 4,
   // initialIndex = 6
-  const len = children.length;
-  const childrenGroup =
-    ((Math.floor(
+  const childrenGroup = modulo(
+    Math.floor(
       (activeIndex - (initialIndex % adjacentChildOffset)) / adjacentChildOffset
-    ) %
-      len) +
-      len) %
-    len;
-
-  console.log(`${activeIndex}: CHILDREN GROUP ${childrenGroup}`);
+    ),
+    numberOfScreens
+  );
 
   const pages = useMemo(() => {
     // waiting for initial layout - except when testing
     if (width === UNSET) {
       return null;
     }
-
-    console.log('~~~~~~~ REFRESH PAGES ~~~~~~~~');
 
     // slice the children that are rendered by the <Pager />
     // this enables very large child lists to render efficiently
@@ -408,21 +402,35 @@ function Pager({
     // this will slice adjacentChildOffset number of children previous and after
     // the current active child index into a smaller child array
     // TODO: render end of list if index = 0
-    const startIndex = Math.max(activeIndex - adjacentChildOffset, 0);
-    const endIndex = Math.min(
+    const startIndex = modulo(
+      activeIndex - adjacentChildOffset,
+      numberOfScreens
+    );
+    const endIndex = modulo(
       activeIndex + adjacentChildOffset + 1,
       numberOfScreens
     );
-    const adjacentChildren = children.slice(startIndex, endIndex);
+
+    console.log(`startIndex: ${startIndex}, endIndex: ${endIndex}`);
+
+    let adjacentChildren;
+    if (startIndex >= endIndex) {
+      adjacentChildren = [
+        ...children.slice(startIndex, numberOfScreens),
+        ...children.slice(0, endIndex),
+      ];
+    } else {
+      adjacentChildren = children.slice(startIndex, endIndex);
+    }
+
+    console.log(adjacentChildren);
 
     return adjacentChildren.map((child: any, i) => {
       // use map instead of React.Children because we want to track
       // the keys of these children by there index
       // React.Children shifts these key values intelligently, but it
       // causes issues with the memoized values in <Page /> components
-      let index = i + startIndex;
-
-      console.log('render ' + index);
+      let index = modulo(i + startIndex, numberOfScreens);
 
       return (
         <Page
@@ -790,6 +798,9 @@ function runSpring(
     state.position,
   ]);
 }
+
+// a % b but handles negatives
+const modulo = (a, b) => ((a % b) + b) % b;
 
 export {
   Pager,
