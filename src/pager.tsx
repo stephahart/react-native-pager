@@ -83,6 +83,7 @@ const {
   call,
   max,
   min,
+  not,
   greaterThan,
   abs,
   ceil,
@@ -279,6 +280,7 @@ function Pager({
   // animatedIndex represents pager position with an animated value
   // this value is used to compute the transformations of the container screen
   // its also used to compute the offsets of child screens, and any other consumers
+  const prevIdx = memoize(new Value(initialIndex));
   const _animatedValue = memoize(
     block([
       cond(
@@ -318,12 +320,6 @@ function Pager({
                   )
                 )
               ),
-              // update w/ value that will be snapped to
-              // debug('about to call onChnage!', nextIndex),
-              call([nextIndex], ([nextIndex]) => {
-                setActiveIndex(nextIndex);
-                onChange?.(nextIndex);
-              }),
             ]),
           ]),
 
@@ -336,6 +332,14 @@ function Pager({
           ),
         ]
       ),
+      cond(not(eq(prevIdx, nextIndex)), [
+        set(prevIdx, nextIndex),
+        call([nextIndex], ([nextIndex]) => {
+          console.log('INDEX CHANGED!!!');
+          setActiveIndex(nextIndex);
+          onChange?.(nextIndex);
+        }),
+      ]),
       // debug('position', animatedValue),
       set(animatedValue, animatedValue),
       animatedValue,
@@ -374,13 +378,27 @@ function Pager({
 
   // console.log('RENDER PAGER 1');
 
+  // [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+  // adjacentOffset = 4,
+  // initialIndex = 6
+  const len = children.length;
+  const childrenGroup =
+    ((Math.floor(
+      (activeIndex - (initialIndex % adjacentChildOffset)) / adjacentChildOffset
+    ) %
+      len) +
+      len) %
+    len;
+
+  console.log(`${activeIndex}: CHILDREN GROUP ${childrenGroup}`);
+
   const pages = useMemo(() => {
     // waiting for initial layout - except when testing
     if (width === UNSET) {
       return null;
     }
 
-    console.log('CREATE PAGES');
+    console.log('REFRESH PAGES');
     console.log(children);
 
     // slice the children that are rendered by the <Pager />
@@ -391,13 +409,11 @@ function Pager({
 
     // this will slice adjacentChildOffset number of children previous and after
     // the current active child index into a smaller child array
-    const adjacentChildren =
-      adjacentChildOffset !== undefined
-        ? children.slice(
-            Math.max(activeIndex - adjacentChildOffset, 0),
-            Math.min(activeIndex + adjacentChildOffset + 1, numberOfScreens)
-          )
-        : children;
+    // TODO: render end of list if index = 0
+    const adjacentChildren = children.slice(
+      Math.max(activeIndex - adjacentChildOffset, 0),
+      Math.min(activeIndex + adjacentChildOffset + 1, numberOfScreens)
+    );
 
     return adjacentChildren.map((child: any, i) => {
       // use map instead of React.Children because we want to track
@@ -429,7 +445,7 @@ function Pager({
         </Page>
       );
     });
-  }, [children, width]);
+  }, [children, width, childrenGroup]);
 
   // console.log('RENDER PAGER');
 
