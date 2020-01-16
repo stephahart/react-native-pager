@@ -335,7 +335,6 @@ function Pager({
       cond(not(eq(prevIdx, nextIndex)), [
         set(prevIdx, nextIndex),
         call([nextIndex], ([nextIndex]) => {
-          console.log('INDEX CHANGED!!!');
           setActiveIndex(nextIndex);
           onChange?.(nextIndex);
         }),
@@ -410,24 +409,19 @@ function Pager({
     // this will slice adjacentChildOffset number of children previous and after
     // the current active child index into a smaller child array
     // TODO: render end of list if index = 0
-    const adjacentChildren = children.slice(
-      Math.max(activeIndex - adjacentChildOffset, 0),
-      Math.min(activeIndex + adjacentChildOffset + 1, numberOfScreens)
+    const startIndex = Math.max(activeIndex - adjacentChildOffset, 0);
+    const endIndex = Math.min(
+      activeIndex + adjacentChildOffset + 1,
+      numberOfScreens
     );
+    const adjacentChildren = children.slice(startIndex, endIndex);
 
     return adjacentChildren.map((child: any, i) => {
       // use map instead of React.Children because we want to track
       // the keys of these children by there index
       // React.Children shifts these key values intelligently, but it
       // causes issues with the memoized values in <Page /> components
-      let index = i;
-
-      if (adjacentChildOffset !== undefined) {
-        index =
-          initialIndex <= adjacentChildOffset
-            ? i
-            : initialIndex - adjacentChildOffset + i;
-      }
+      let index = i + startIndex;
 
       return (
         <Page
