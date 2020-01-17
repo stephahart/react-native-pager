@@ -140,7 +140,7 @@ function Pager({
   panProps = {},
   pageSize = 1,
   threshold = 0.1,
-  minIndex = 0,
+  minIndex,
   maxIndex: parentMax,
   adjacentChildOffset = 5,
   style,
@@ -161,11 +161,6 @@ function Pager({
   const numberOfScreens = Children.count(children);
   const initialIndex = memoize(activeIndex);
   // console.log('INITIAL INDEX IS ' + initialIndex);
-
-  const maxIndex =
-    parentMax === undefined
-      ? Math.ceil((numberOfScreens - 1) / pageSize)
-      : parentMax;
 
   const dragX = memoize(new Value(0));
   const dragY = memoize(new Value(0));
@@ -242,8 +237,10 @@ function Pager({
   const animatedThreshold = useAnimatedValue(threshold);
   const clampDragPrev = useAnimatedValue(clampDrag.prev, REALLY_BIG_NUMBER);
   const clampDragNext = useAnimatedValue(clampDrag.next, REALLY_BIG_NUMBER);
-  const animatedMaxIndex = useAnimatedValue(maxIndex);
-  const animatedMinIndex = useAnimatedValue(minIndex);
+  const animatedMaxIndex: any =
+    parentMax === undefined ? new Value() : new Value(parentMax);
+  const animatedMinIndex: any =
+    minIndex === undefined ? new Value() : new Value(minIndex);
   // console.log('RENDER PAGER 5');
 
   // pan event values to track
@@ -304,19 +301,35 @@ function Pager({
                 nextIndex,
                 cond(
                   greaterThan(change, 0),
-                  min(
-                    max(
+                  cond(
+                    defined(animatedMaxIndex),
+                    min(
+                      // + 1
+                      max(
+                        sub(_animatedActiveIndex, indexChange),
+                        animatedMinIndex
+                      ),
+                      animatedMaxIndex
+                    ),
+                    modulo(
                       sub(_animatedActiveIndex, indexChange),
-                      animatedMinIndex
-                    ),
-                    animatedMaxIndex
+                      numberOfScreens
+                    )
                   ),
-                  min(
-                    max(
-                      add(_animatedActiveIndex, indexChange),
-                      animatedMinIndex
+                  cond(
+                    defined(animatedMaxIndex),
+                    min(
+                      // - 1
+                      max(
+                        add(_animatedActiveIndex, indexChange),
+                        animatedMinIndex
+                      ),
+                      animatedMaxIndex
                     ),
-                    animatedMaxIndex
+                    modulo(
+                      add(_animatedActiveIndex, indexChange),
+                      numberOfScreens
+                    )
                   )
                 )
               ),
