@@ -308,19 +308,31 @@ function Pager({
                   greaterThan(change, 0),
                   cond(
                     defined(animatedMaxIndex),
-                    withinRange(sub(_animatedActiveIndex, indexChange)),
-                    modulo(
-                      sub(_animatedActiveIndex, indexChange),
-                      numberOfScreens
-                    )
+                    [
+                      debug('within range - 1!', animatedMaxIndex),
+                      withinRange(sub(_animatedActiveIndex, indexChange)),
+                    ],
+                    [
+                      debug('NOT within range - 1!', animatedMaxIndex),
+                      modulo(
+                        sub(_animatedActiveIndex, indexChange),
+                        numberOfScreens
+                      ),
+                    ]
                   ),
                   cond(
                     defined(animatedMaxIndex),
-                    withinRange(add(_animatedActiveIndex, indexChange)),
-                    modulo(
-                      add(_animatedActiveIndex, indexChange),
-                      numberOfScreens
-                    )
+                    [
+                      debug('within range + 1!', animatedMaxIndex),
+                      withinRange(add(_animatedActiveIndex, indexChange)),
+                    ],
+                    [
+                      debug('NOT within range + 1!', animatedMaxIndex),
+                      modulo(
+                        add(_animatedActiveIndex, indexChange),
+                        numberOfScreens
+                      ),
+                    ]
                   )
                 )
               ),
