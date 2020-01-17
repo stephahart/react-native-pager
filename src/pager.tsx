@@ -83,6 +83,7 @@ const {
   call,
   max,
   min,
+  modulo,
   not,
   greaterThan,
   abs,
@@ -91,6 +92,7 @@ const {
   concat,
   neq,
   and,
+  proc,
   startClock,
   spring,
   // @ts-ignore
@@ -250,6 +252,9 @@ function Pager({
   const change = memoize(sub(_animatedActiveIndex, animatedValue));
   const absChange = memoize(abs(change));
   const shouldTransition = memoize(greaterThan(absChange, animatedThreshold));
+  const withinRange = memoize(
+    proc(n => min(max(n as any, animatedMinIndex), animatedMaxIndex))
+  );
   const indexChange = memoize(new Value(0));
 
   // clamp drag values between the configured clamp props
@@ -303,14 +308,7 @@ function Pager({
                   greaterThan(change, 0),
                   cond(
                     defined(animatedMaxIndex),
-                    min(
-                      // + 1
-                      max(
-                        sub(_animatedActiveIndex, indexChange),
-                        animatedMinIndex
-                      ),
-                      animatedMaxIndex
-                    ),
+                    withinRange(sub(_animatedActiveIndex, indexChange)),
                     modulo(
                       sub(_animatedActiveIndex, indexChange),
                       numberOfScreens
@@ -318,14 +316,7 @@ function Pager({
                   ),
                   cond(
                     defined(animatedMaxIndex),
-                    min(
-                      // - 1
-                      max(
-                        add(_animatedActiveIndex, indexChange),
-                        animatedMinIndex
-                      ),
-                      animatedMaxIndex
-                    ),
+                    withinRange(add(_animatedActiveIndex, indexChange)),
                     modulo(
                       add(_animatedActiveIndex, indexChange),
                       numberOfScreens
@@ -394,7 +385,7 @@ function Pager({
   // [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
   // adjacentOffset = 4,
   // initialIndex = 6
-  const childrenGroup = modulo(
+  const childrenGroup = moduloJs(
     Math.floor(
       (activeIndex - (initialIndex % adjacentChildOffset)) / adjacentChildOffset
     ),
@@ -416,11 +407,11 @@ function Pager({
     // this will slice adjacentChildOffset number of children previous and after
     // the current active child index into a smaller child array
     // TODO: render end of list if index = 0
-    const startIndex = modulo(
+    const startIndex = moduloJs(
       activeIndex - adjacentChildOffset,
       numberOfScreens
     );
-    const endIndex = modulo(
+    const endIndex = moduloJs(
       activeIndex + adjacentChildOffset + 1,
       numberOfScreens
     );
@@ -444,7 +435,7 @@ function Pager({
       // the keys of these children by there index
       // React.Children shifts these key values intelligently, but it
       // causes issues with the memoized values in <Page /> components
-      let index = modulo(i + startIndex, numberOfScreens);
+      let index = moduloJs(i + startIndex, numberOfScreens);
 
       return (
         <Page
@@ -814,7 +805,7 @@ function runSpring(
 }
 
 // a % b but handles negatives
-const modulo = (a, b) => ((a % b) + b) % b;
+const moduloJs = (a, b) => ((a % b) + b) % b;
 
 export {
   Pager,
