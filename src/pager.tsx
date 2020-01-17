@@ -333,6 +333,7 @@ function Pager({
                   )
                 )
               ),
+              debug('next index', nextIndex),
             ]),
           ]),
 
