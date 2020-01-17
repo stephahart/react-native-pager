@@ -345,13 +345,7 @@ function Pager({
           set(animatedIndex, nextIndex),
           set(
             animatedValue,
-            runSpring(
-              clock,
-              animatedValue,
-              nextIndex,
-              numberOfScreens,
-              springConfig
-            )
+            runSpring(clock, animatedValue, nextIndex, springConfig)
           ),
         ]
       ),
@@ -780,31 +774,16 @@ const DEFAULT_SPRING_CONFIG = {
   restSpeedThreshold: 0.01,
 };
 
-const adjustToValue = proc((position, toValue, numberOfScreens) =>
-  block([
-    cond(
-      and(eq(position, numberOfScreens - 1), eq(toValue, 0)),
-      set(toValue, numberOfScreens)
-    ),
-    cond(
-      and(eq(position, 0), eq(toValue, numberOfScreens - 1)),
-      set(position, -1)
-    ),
-    toValue,
-  ])
-);
-
 function runSpring(
   clock: Animated.Clock,
   position: Animated.Value<number>,
   toValue: Animated.Node<number>,
-  numberOfScreens: number,
   springConfig?: Partial<SpringConfig>
 ) {
   const state = {
     finished: new Value(0),
     velocity: new Value(0),
-    position: new Value(position as any),
+    position: position,
     time: new Value(0),
   };
 
@@ -820,30 +799,19 @@ function runSpring(
       [
         cond(neq(config.toValue, toValue), [
           set(state.finished, 0),
-          set(
-            config.toValue,
-            adjustToValue(state.position, config.toValue, numberOfScreens)
-          ),
+          set(config.toValue, toValue),
         ]),
       ],
       [
         set(state.finished, 0),
         set(state.time, 0),
         set(state.velocity, 0),
-        set(
-          config.toValue,
-          adjustToValue(state.position, config.toValue, numberOfScreens)
-        ),
+        set(config.toValue, toValue),
         startClock(clock),
       ]
     ),
     spring(clock, state, config),
-    cond(state.finished, [
-      stopClock(clock),
-      set(state.position, position),
-      set(position, modulo(position, numberOfScreens)),
-      set(toValue as any, modulo(toValue, numberOfScreens)),
-    ]),
+    cond(state.finished, [stopClock(clock), set(state.position, position)]),
     state.position,
   ]);
 }
