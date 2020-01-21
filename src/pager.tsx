@@ -95,8 +95,6 @@ const {
   proc,
   startClock,
   spring,
-  // @ts-ignore
-  debug,
 } = Animated;
 
 export interface iPager {
@@ -162,7 +160,6 @@ function Pager({
 
   const numberOfScreens = Children.count(children);
   const initialIndex = memoize(activeIndex);
-  // console.log('INITIAL INDEX IS ' + initialIndex);
 
   const dragX = memoize(new Value(0));
   const dragY = memoize(new Value(0));
@@ -210,7 +207,6 @@ function Pager({
       initialHeight = style.height;
     }
   }
-  // console.log('RENDER PAGER 6');
 
   const [width, setWidth] = useState(initialWidth);
   const [height, setHeight] = useState(initialHeight);
@@ -243,7 +239,6 @@ function Pager({
     parentMax === undefined ? new Value() : new Value(parentMax);
   const animatedMinIndex: any =
     minIndex === undefined ? new Value() : new Value(minIndex);
-  // console.log('RENDER PAGER 5');
 
   // pan event values to track
   const dragStart = memoize(new Value(0));
@@ -268,16 +263,6 @@ function Pager({
   );
 
   const clock = memoize(new Clock());
-
-  // snap focus to activeIndex when it updates
-  /*
-  useEffect(() => {
-    if (activeIndex >= minIndex && activeIndex <= maxIndex) {
-      nextIndex.setValue(activeIndex);
-    }
-  }, [activeIndex, minIndex, maxIndex]);
-  */
-  // console.log('RENDER PAGER 4');
 
   // animatedIndex represents pager position with an animated value
   // this value is used to compute the transformations of the container screen
@@ -308,12 +293,8 @@ function Pager({
                   greaterThan(change, 0),
                   cond(
                     defined(animatedMaxIndex),
+                    [withinRange(sub(_animatedActiveIndex, indexChange))],
                     [
-                      debug('within range - 1!', animatedMaxIndex),
-                      withinRange(sub(_animatedActiveIndex, indexChange)),
-                    ],
-                    [
-                      debug('NOT within range - 1!', animatedMaxIndex),
                       modulo(
                         sub(_animatedActiveIndex, indexChange),
                         numberOfScreens
@@ -322,12 +303,8 @@ function Pager({
                   ),
                   cond(
                     defined(animatedMaxIndex),
+                    [withinRange(add(_animatedActiveIndex, indexChange))],
                     [
-                      debug('within range + 1!', animatedMaxIndex),
-                      withinRange(add(_animatedActiveIndex, indexChange)),
-                    ],
-                    [
-                      debug('NOT within range + 1!', animatedMaxIndex),
                       modulo(
                         add(_animatedActiveIndex, indexChange),
                         numberOfScreens
@@ -336,7 +313,6 @@ function Pager({
                   )
                 )
               ),
-              debug('next index', nextIndex),
             ]),
           ]),
 
@@ -356,13 +332,10 @@ function Pager({
           onChange?.(nextIndex);
         }),
       ]),
-      // debug('position', animatedValue),
       set(animatedValue, animatedValue),
       animatedValue,
     ])
   );
-
-  // console.log('RENDER PAGER 3');
 
   const clampPrevValue = useAnimatedValue(clamp.prev, numberOfScreens);
   const clampNextValue = useAnimatedValue(clamp.next, numberOfScreens);
@@ -383,7 +356,6 @@ function Pager({
   const containerTranslation = memoize(
     multiply(_animatedValue, dimension, animatedPageSize, -1)
   );
-  // console.log('RENDER PAGER 2');
 
   // grabbing the height property from the style prop if there is no container style, this reduces
   // the chances of messing up the layout with containerStyle configurations
@@ -391,8 +363,6 @@ function Pager({
   // also has the benefit of covering 100% width of container, meaning better pan coverage on android
   const defaultContainerStyle =
     style && style.height ? { height: style.height } : undefined;
-
-  // console.log('RENDER PAGER 1');
 
   // [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
   // adjacentOffset = 4,
@@ -428,8 +398,6 @@ function Pager({
       numberOfScreens
     );
 
-    console.log(`startIndex: ${startIndex}, endIndex: ${endIndex}`);
-
     let adjacentChildren;
     if (startIndex >= endIndex) {
       adjacentChildren = [
@@ -439,8 +407,6 @@ function Pager({
     } else {
       adjacentChildren = children.slice(startIndex, endIndex);
     }
-
-    console.log(adjacentChildren);
 
     return adjacentChildren.map((child: any, i) => {
       // use map instead of React.Children because we want to track
@@ -466,8 +432,6 @@ function Pager({
       );
     });
   }, [children, width, childrenGroup]);
-
-  // console.log('RENDER PAGER');
 
   // extra Animated.Views below may seem redundant but they preserve applied styles e.g padding and margin
   // of the page views
