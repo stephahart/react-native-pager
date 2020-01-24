@@ -390,7 +390,7 @@ function Pager({
     // the current active child index into a smaller child array
     // TODO: render end of list if index = 0
     const startIndex = moduloJs(activeIndex - 2, numberOfScreens);
-    const endIndex = moduloJs(activeIndex + 6, numberOfScreens);
+    const endIndex = moduloJs(activeIndex + 10, numberOfScreens);
 
     console.log(
       `activeIndex: ${activeIndex}, startIndex: ${startIndex}, endIndex: ${endIndex}`
