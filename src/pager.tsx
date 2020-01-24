@@ -389,13 +389,11 @@ function Pager({
     // this will slice adjacentChildOffset number of children previous and after
     // the current active child index into a smaller child array
     // TODO: render end of list if index = 0
-    const startIndex = moduloJs(
-      activeIndex - adjacentChildOffset,
-      numberOfScreens
-    );
-    const endIndex = moduloJs(
-      activeIndex + adjacentChildOffset + 1,
-      numberOfScreens
+    const startIndex = moduloJs(activeIndex - 2, numberOfScreens);
+    const endIndex = moduloJs(activeIndex + 6, numberOfScreens);
+
+    console.log(
+      `activeIndex: ${activeIndex}, startIndex: ${startIndex}, endIndex: ${endIndex}`
     );
 
     let adjacentChildren;
