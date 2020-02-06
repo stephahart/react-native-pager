@@ -159,6 +159,8 @@ function Pager({
   } = useContext(PagerContext);
 
   const numberOfScreens = Children.count(children);
+  const animatedNumberOfScreens = memoize(new Value(numberOfScreens));
+  animatedNumberOfScreens.setValue(numberOfScreens);
   const initialIndex = memoize(activeIndex);
 
   const dragX = memoize(new Value(0));
@@ -222,7 +224,7 @@ function Pager({
   // `totalDimension` on the container view is required for android layouts to work properly
   // otherwise translations move the panHandler off of the screen
   // set the total width of the container view to the sum width of all the screens
-  const totalDimension = multiply(dimension, numberOfScreens);
+  const totalDimension = multiply(dimension, animatedNumberOfScreens);
 
   function handleLayout({ nativeEvent: { layout } }: LayoutChangeEvent) {
     layout.width !== width && setWidth(layout.width);
@@ -297,7 +299,7 @@ function Pager({
                     [
                       modulo(
                         sub(_animatedActiveIndex, indexChange),
-                        numberOfScreens
+                        animatedNumberOfScreens
                       ),
                     ]
                   ),
@@ -307,7 +309,7 @@ function Pager({
                     [
                       modulo(
                         add(_animatedActiveIndex, indexChange),
-                        numberOfScreens
+                        animatedNumberOfScreens
                       ),
                     ]
                   )
@@ -568,25 +570,31 @@ function useAnimatedValue(
     if (value !== undefined) {
       animatedValue.setValue(value);
     }
-  }, [value]);
+  }, [value, defaultValue]);
 
   return animatedValue;
 }
 
-interface iPagerContext {
+interface iPagerContext<T> {
   animatedValue: Animated.Value<number>;
   animatedIndex: Animated.Value<number>;
   nextIndex: Animated.Value<number>;
   activeIndex: number;
   setActiveIndex: (idx: number) => void;
+  content: T[];
+  setContent: (content: T[]) => void;
+  setState: (state: PagerState<T>) => void;
 }
 
-const PagerContext = createContext<iPagerContext>({
+const PagerContext = createContext<iPagerContext<any>>({
   animatedValue: new Value(0),
   animatedIndex: new Value(0),
   nextIndex: new Value(0),
   activeIndex: 0,
   setActiveIndex: _ => null,
+  content: [],
+  setContent: _ => null,
+  setState: _ => null,
 });
 
 interface iPagerProvider {
@@ -594,14 +602,24 @@ interface iPagerProvider {
   initialIndex: number;
 }
 
+export interface PagerState<T> {
+  activeIndex: number;
+  content: T[];
+}
+
 const PagerProvider: React.FC<iPagerProvider> = ({
   children,
   initialIndex = 0,
 }) => {
-  const [activeIndex, setActiveIndex] = useState<number>(initialIndex);
+  const [state, setState] = useState<PagerState<any>>({
+    activeIndex: initialIndex,
+    content: null as any,
+  });
   const animatedValue = memoize(new Value<number>(initialIndex));
   const animatedIndex = memoize(new Value<number>(initialIndex));
   const nextIndex = memoize(new Value<number>(initialIndex));
+  const setActiveIndex = idx => setState(s => ({ ...s, activeIndex: idx }));
+  const setContent = content => setState(s => ({ ...s, content: content }));
 
   return (
     <PagerContext.Provider
@@ -609,8 +627,11 @@ const PagerProvider: React.FC<iPagerProvider> = ({
         animatedValue,
         animatedIndex,
         nextIndex,
-        activeIndex,
+        activeIndex: state.activeIndex,
+        content: state.content,
         setActiveIndex,
+        setContent,
+        setState,
       }}
     >
       {typeof children === 'function'
@@ -618,15 +639,18 @@ const PagerProvider: React.FC<iPagerProvider> = ({
             animatedValue,
             animatedIndex,
             nextIndex,
-            activeIndex,
+            activeIndex: state.activeIndex,
             setActiveIndex,
+            content: state.content,
+            setContent,
+            setState,
           })
         : children}
     </PagerContext.Provider>
   );
 };
 
-function usePager(): iPagerContext {
+function usePager<T>(): iPagerContext<T> {
   const context = useContext(PagerContext);
 
   if (context === undefined) {
