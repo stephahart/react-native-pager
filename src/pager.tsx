@@ -376,7 +376,11 @@ function Pager({
   // container offset -- this is the window of focus for active screens
   // it shifts around based on the animatedIndex value
   const containerTranslation = memoize(
-    multiply(_animatedValue, dimension, animatedPageSize, -1)
+    cond(
+      eq(animatedPageSize, 1),
+      0,
+      multiply(_animatedValue, dimension, animatedPageSize, -1)
+    )
   );
 
   // grabbing the height property from the style prop if there is no container style, this reduces
@@ -542,16 +546,15 @@ function Page({
   // to properly position pages
   const position = memoize(
     cond(
-      and(eq(index, 0), greaterThan(animatedIndex, sub(numberOfPages, 1))), // if we're in the last position of the loop, and we're calulcating the position for the first page
-      [multiply(numberOfPages, dimension)], // position the first item
-      multiply(index, dimension) // normal position
+      eq(numberOfPages, 1),
+      0,
+      cond(
+        and(eq(index, 0), greaterThan(animatedIndex, sub(numberOfPages, 1))), // if we're in the last position of the loop, and we're calulcating the position for the first page
+        [multiply(numberOfPages, dimension)], // position the first item
+        multiply(index, dimension) // normal position
+      )
     )
   );
-
-  // min-max the position based on clamp values
-  // this means the <Page /> will have a container that is always positioned
-  // in the same place, but the inner view can be translated within these bounds
-  const translation = memoize(min(max(position, minimum), maximum));
 
   const defaultStyle = memoize({
     // map to height / width value depending on vertical / horizontal configuration
@@ -569,21 +572,25 @@ function Page({
 
   // compute the relative offset value to the current animated index so
   // that <Page /> can use interpolation values that are in sync with drag gestures
-  const absOffset = memoize(sub(index, animatedIndex));
+  const absOffset = memoize(
+    cond(eq(numberOfPages, 1), 0, sub(index, animatedIndex))
+  );
   const loopOffset = memoize(
-    block([
+    cond(
+      eq(numberOfPages, 1),
+      0,
       cond(
         eq(index, 0),
         modulo(abs(absOffset), sub(numberOfPages, 1)),
         absOffset
-      ),
-    ])
+      )
+    )
   );
 
-  const offset = memoize(cond(new Value(loop ? 1 : 0), loopOffset, absOffset));
-
   const styleOffset = memoize(
-    block([
+    cond(
+      eq(numberOfPages, 1),
+      0,
       cond(
         eq(index, 0),
         cond(
@@ -592,8 +599,8 @@ function Page({
           sub(index, animatedIndex)
         ),
         sub(index, animatedIndex)
-      ),
-    ])
+      )
+    )
   );
 
   // apply interpolation configs to <Page />
@@ -753,7 +760,9 @@ function useAnimatedIndex() {
 function useOffset(index: number, numberOfPages: Animated.Node<number>) {
   const animatedIndex = useAnimatedIndex();
   const offset = memoize(
-    block([
+    cond(
+      eq(numberOfPages, 1),
+      0,
       cond(
         eq(index, 0),
         cond(
@@ -762,8 +771,8 @@ function useOffset(index: number, numberOfPages: Animated.Node<number>) {
           sub(index, animatedIndex)
         ),
         sub(index, animatedIndex)
-      ),
-    ])
+      )
+    )
   );
   return offset;
 }
