@@ -579,11 +579,26 @@ function Page({
       ),
     ])
   );
+
   const offset = memoize(cond(new Value(loop ? 1 : 0), loopOffset, absOffset));
+
+  const styleOffset = memoize(
+    block([
+      cond(
+        eq(index, 0),
+        cond(
+          greaterOrEq(animatedIndex, sub(numberOfPages, 1)),
+          sub(numberOfPages, animatedIndex),
+          sub(index, animatedIndex)
+        ),
+        sub(index, animatedIndex)
+      ),
+    ])
+  );
 
   // apply interpolation configs to <Page />
   const interpolatedStyles = memoize(
-    interpolateWithConfig(offset, pageInterpolation)
+    interpolateWithConfig(styleOffset, numberOfPages, pageInterpolation)
   );
 
   // take out zIndex here as it needs to be applied to siblings
@@ -735,25 +750,40 @@ function useAnimatedIndex() {
   return pager[2];
 }
 
-function useOffset(index: number) {
+function useOffset(index: number, numberOfPages: Animated.Node<number>) {
   const animatedIndex = useAnimatedIndex();
-  const offset = memoize(sub(index, animatedIndex));
-
+  const offset = memoize(
+    block([
+      cond(
+        eq(index, 0),
+        cond(
+          greaterOrEq(animatedIndex, sub(numberOfPages, 1)),
+          sub(numberOfPages, animatedIndex),
+          sub(index, animatedIndex)
+        ),
+        sub(index, animatedIndex)
+      ),
+    ])
+  );
   return offset;
 }
 
 function useInterpolation(
   pageInterpolation: iPageInterpolation,
+  numberOfPages: Animated.Node<number>,
   index?: number
 ) {
   const _index = index !== undefined ? index : useIndex();
-  const offset = useOffset(_index);
-  const styles = memoize(interpolateWithConfig(offset, pageInterpolation));
+  const offset = useOffset(_index, numberOfPages);
+  const styles = memoize(
+    interpolateWithConfig(offset, numberOfPages, pageInterpolation)
+  );
   return styles;
 }
 
 function interpolateWithConfig(
   offset: Animated.Node<number>,
+  numberOfPages: Animated.Node<number>,
   pageInterpolation?: iPageInterpolation
 ): ViewStyle {
   if (!pageInterpolation) {
@@ -765,7 +795,7 @@ function interpolateWithConfig(
 
     if (Array.isArray(currentStyle)) {
       const _style = currentStyle.map((interpolationConfig: any) =>
-        interpolateWithConfig(offset, interpolationConfig)
+        interpolateWithConfig(offset, numberOfPages, interpolationConfig)
       );
 
       styles[key] = _style;
