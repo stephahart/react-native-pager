@@ -376,7 +376,11 @@ function Pager({
   // container offset -- this is the window of focus for active screens
   // it shifts around based on the animatedIndex value
   const containerTranslation = memoize(
-    multiply(_animatedValue, dimension, animatedPageSize, -1)
+    cond(
+      eq(animatedNumberOfScreens, 1),
+      0,
+      multiply(_animatedValue, dimension, animatedPageSize, -1)
+    )
   );
 
   // grabbing the height property from the style prop if there is no container style, this reduces
@@ -453,7 +457,7 @@ function Pager({
           targetTransform={targetTransform}
           targetDimension={targetDimension}
           pageInterpolation={pageInterpolation}
-          numberOfPages={animatedNumberOfScreens}
+          animatedNumberOfScreens={animatedNumberOfScreens}
           loop={loop}
         >
           {child}
@@ -519,7 +523,7 @@ interface iPage {
   targetDimension: 'width' | 'height';
   pageInterpolation: iPageInterpolation | undefined;
   animatedIndex: Animated.Value<number>;
-  numberOfPages: Animated.Value<number>;
+  animatedNumberOfScreens: Animated.Value<number>;
   loop: boolean;
 }
 
@@ -533,7 +537,7 @@ function Page({
   targetDimension,
   pageInterpolation,
   animatedIndex,
-  numberOfPages,
+  animatedNumberOfScreens,
   loop,
 }: iPage) {
   // compute the absolute position of the page based on index and dimension
@@ -542,16 +546,18 @@ function Page({
   // to properly position pages
   const position = memoize(
     cond(
-      and(eq(index, 0), greaterThan(animatedIndex, sub(numberOfPages, 1))), // if we're in the last position of the loop, and we're calulcating the position for the first page
-      [multiply(numberOfPages, dimension)], // position the first item
-      multiply(index, dimension) // normal position
+      eq(animatedNumberOfScreens, 1),
+      0,
+      cond(
+        and(
+          eq(index, 0),
+          greaterThan(animatedIndex, sub(animatedNumberOfScreens, 1))
+        ), // if we're in the last position of the loop, and we're calulcating the position for the first page
+        [multiply(animatedNumberOfScreens, dimension)], // position the first item
+        multiply(index, dimension) // normal position
+      )
     )
   );
-
-  // min-max the position based on clamp values
-  // this means the <Page /> will have a container that is always positioned
-  // in the same place, but the inner view can be translated within these bounds
-  const translation = memoize(min(max(position, minimum), maximum));
 
   const defaultStyle = memoize({
     // map to height / width value depending on vertical / horizontal configuration
@@ -567,38 +573,29 @@ function Page({
     ],
   });
 
-  // compute the relative offset value to the current animated index so
-  // that <Page /> can use interpolation values that are in sync with drag gestures
-  const absOffset = memoize(sub(index, animatedIndex));
-  const loopOffset = memoize(
-    block([
-      cond(
-        eq(index, 0),
-        modulo(abs(absOffset), sub(numberOfPages, 1)),
-        absOffset
-      ),
-    ])
-  );
-
-  const offset = memoize(cond(new Value(loop ? 1 : 0), loopOffset, absOffset));
-
   const styleOffset = memoize(
-    block([
+    cond(
+      eq(animatedNumberOfScreens, 1),
+      0,
       cond(
         eq(index, 0),
         cond(
-          greaterOrEq(animatedIndex, sub(numberOfPages, 1)),
-          sub(numberOfPages, animatedIndex),
+          greaterOrEq(animatedIndex, sub(animatedNumberOfScreens, 1)),
+          sub(animatedNumberOfScreens, animatedIndex),
           sub(index, animatedIndex)
         ),
         sub(index, animatedIndex)
-      ),
-    ])
+      )
+    )
   );
 
   // apply interpolation configs to <Page />
   const interpolatedStyles = memoize(
-    interpolateWithConfig(styleOffset, numberOfPages, pageInterpolation)
+    interpolateWithConfig(
+      styleOffset,
+      animatedNumberOfScreens,
+      pageInterpolation
+    )
   );
 
   // take out zIndex here as it needs to be applied to siblings
@@ -750,40 +747,45 @@ function useAnimatedIndex() {
   return pager[2];
 }
 
-function useOffset(index: number, numberOfPages: Animated.Node<number>) {
+function useOffset(
+  index: number,
+  animatedNumberOfScreens: Animated.Node<number>
+) {
   const animatedIndex = useAnimatedIndex();
   const offset = memoize(
-    block([
+    cond(
+      eq(animatedNumberOfScreens, 1),
+      0,
       cond(
         eq(index, 0),
         cond(
-          greaterOrEq(animatedIndex, sub(numberOfPages, 1)),
-          sub(numberOfPages, animatedIndex),
+          greaterOrEq(animatedIndex, sub(animatedNumberOfScreens, 1)),
+          sub(animatedNumberOfScreens, animatedIndex),
           sub(index, animatedIndex)
         ),
         sub(index, animatedIndex)
-      ),
-    ])
+      )
+    )
   );
   return offset;
 }
 
 function useInterpolation(
   pageInterpolation: iPageInterpolation,
-  numberOfPages: Animated.Node<number>,
+  animatedNumberOfScreens: Animated.Node<number>,
   index?: number
 ) {
   const _index = index !== undefined ? index : useIndex();
-  const offset = useOffset(_index, numberOfPages);
+  const offset = useOffset(_index, animatedNumberOfScreens);
   const styles = memoize(
-    interpolateWithConfig(offset, numberOfPages, pageInterpolation)
+    interpolateWithConfig(offset, animatedNumberOfScreens, pageInterpolation)
   );
   return styles;
 }
 
 function interpolateWithConfig(
   offset: Animated.Node<number>,
-  numberOfPages: Animated.Node<number>,
+  animatedNumberOfScreens: Animated.Node<number>,
   pageInterpolation?: iPageInterpolation
 ): ViewStyle {
   if (!pageInterpolation) {
@@ -795,7 +797,11 @@ function interpolateWithConfig(
 
     if (Array.isArray(currentStyle)) {
       const _style = currentStyle.map((interpolationConfig: any) =>
-        interpolateWithConfig(offset, numberOfPages, interpolationConfig)
+        interpolateWithConfig(
+          offset,
+          animatedNumberOfScreens,
+          interpolationConfig
+        )
       );
 
       styles[key] = _style;
