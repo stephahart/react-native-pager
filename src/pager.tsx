@@ -95,6 +95,8 @@ const {
   proc,
   startClock,
   spring,
+  greaterOrEq,
+  debug,
 } = Animated;
 
 export interface iPager {
@@ -119,6 +121,7 @@ export interface iPager {
     prev?: number;
     next?: number;
   };
+  loop: boolean;
 }
 const REALLY_BIG_NUMBER = 1000000000;
 
@@ -149,6 +152,7 @@ function Pager({
   pageInterpolation,
   clamp = {},
   clampDrag = {},
+  loop = true,
 }: iPager) {
   const {
     animatedValue,
@@ -162,6 +166,8 @@ function Pager({
   const animatedNumberOfScreens = memoize(new Value(numberOfScreens));
   animatedNumberOfScreens.setValue(numberOfScreens);
   const initialIndex = memoize(activeIndex);
+  const animatedLoop = memoize(new Value(loop ? 1 : 0));
+  animatedLoop.setValue(loop ? 1 : 0);
 
   const dragX = memoize(new Value(0));
   const dragY = memoize(new Value(0));
@@ -246,7 +252,16 @@ function Pager({
   const dragStart = memoize(new Value(0));
   const swiping = memoize(new Value(FALSE));
   const _animatedActiveIndex = memoize(new Value(initialIndex));
-  const change = memoize(sub(_animatedActiveIndex, animatedValue));
+  const change = memoize(
+    cond(
+      and(
+        eq(_animatedActiveIndex, 0),
+        greaterThan(animatedValue, sub(animatedNumberOfScreens, 1))
+      ),
+      sub(animatedNumberOfScreens, animatedValue),
+      sub(_animatedActiveIndex, animatedValue)
+    )
+  );
   const absChange = memoize(abs(change));
   const shouldTransition = memoize(greaterThan(absChange, animatedThreshold));
   const withinRange = memoize(
@@ -278,7 +293,6 @@ function Pager({
           cond(clockRunning(clock), stopClock(clock)),
           // captures the initial drag value on first drag event
           cond(swiping, 0, [set(dragStart, animatedValue), set(swiping, TRUE)]),
-
           set(animatedValue, sub(dragStart, clampedDelta)),
         ],
         [
@@ -293,54 +307,60 @@ function Pager({
                 nextIndex,
                 cond(
                   greaterThan(change, 0),
-                  cond(
-                    defined(animatedMaxIndex),
-                    [withinRange(sub(_animatedActiveIndex, indexChange))],
-                    [
-                      modulo(
-                        sub(_animatedActiveIndex, indexChange),
-                        animatedNumberOfScreens
-                      ),
-                    ]
-                  ),
-                  cond(
-                    defined(animatedMaxIndex),
-                    [withinRange(add(_animatedActiveIndex, indexChange))],
-                    [
-                      modulo(
-                        add(_animatedActiveIndex, indexChange),
-                        animatedNumberOfScreens
-                      ),
-                    ]
-                  )
+                  [
+                    cond(
+                      defined(animatedMaxIndex),
+                      [withinRange(sub(_animatedActiveIndex, indexChange))],
+                      [
+                        cond(
+                          eq(_animatedActiveIndex, 0),
+                          sub(animatedNumberOfScreens, 1),
+                          sub(_animatedActiveIndex, indexChange)
+                        ),
+                      ]
+                    ),
+                  ],
+                  [
+                    cond(
+                      defined(animatedMaxIndex),
+                      [withinRange(add(_animatedActiveIndex, indexChange))],
+                      [add(_animatedActiveIndex, indexChange)]
+                    ),
+                  ]
                 )
               ),
             ]),
           ]),
 
           // set animatedActiveIndex for next swipe event
-          set(_animatedActiveIndex, nextIndex),
-          set(animatedIndex, nextIndex),
+          set(_animatedActiveIndex, modulo(nextIndex, animatedNumberOfScreens)),
+          set(animatedIndex, modulo(nextIndex, animatedNumberOfScreens)),
           set(
             animatedValue,
-            runSpring(clock, animatedValue, nextIndex, springConfig)
+            runSpring(
+              clock,
+              animatedValue,
+              nextIndex,
+              animatedNumberOfScreens,
+              springConfig
+            )
           ),
         ]
       ),
       cond(not(eq(prevIdx, nextIndex)), [
         set(prevIdx, nextIndex),
-        call([nextIndex], ([nextIndex]) => {
+        call([modulo(nextIndex, animatedNumberOfScreens)], ([nextIndex]) => {
           setActiveIndex(nextIndex);
           onChange?.(nextIndex);
         }),
       ]),
-      set(animatedValue, animatedValue),
+      set(animatedValue, modulo(animatedValue, numberOfScreens)),
       animatedValue,
     ])
   );
 
-  const clampPrevValue = useAnimatedValue(clamp.prev, numberOfScreens);
-  const clampNextValue = useAnimatedValue(clamp.next, numberOfScreens);
+  const clampPrevValue = useAnimatedValue(clamp.prev, numberOfScreens + 1);
+  const clampNextValue = useAnimatedValue(clamp.next, numberOfScreens + 1);
 
   // stop child screens from translating beyond the bounds set by clamp props:
   const minimum = memoize(
@@ -391,8 +411,19 @@ function Pager({
     // this will slice adjacentChildOffset number of children previous and after
     // the current active child index into a smaller child array
     // TODO: render end of list if index = 0
-    const startIndex = moduloJs(activeIndex - 2, numberOfScreens);
-    const endIndex = moduloJs(activeIndex + 6, numberOfScreens);
+    // inclusive
+    const startIndex = moduloJs(
+      activeIndex -
+        Math.min(adjacentChildOffset, Math.floor((numberOfScreens - 1) / 2)),
+      numberOfScreens
+    );
+    // exclusive
+    const endIndex = moduloJs(
+      activeIndex +
+        Math.min(adjacentChildOffset, Math.ceil((numberOfScreens - 1) / 2)) +
+        1,
+      numberOfScreens
+    );
 
     let adjacentChildren;
     if (startIndex >= endIndex) {
@@ -406,7 +437,7 @@ function Pager({
 
     return adjacentChildren.map((child: any, i) => {
       // use map instead of React.Children because we want to track
-      // the keys of these children by there index
+      // the keys of these children by their index
       // React.Children shifts these key values intelligently, but it
       // causes issues with the memoized values in <Page /> components
       let index = moduloJs(i + startIndex, numberOfScreens);
@@ -422,6 +453,8 @@ function Pager({
           targetTransform={targetTransform}
           targetDimension={targetDimension}
           pageInterpolation={pageInterpolation}
+          numberOfPages={animatedNumberOfScreens}
+          loop={loop}
         >
           {child}
         </Page>
@@ -486,6 +519,8 @@ interface iPage {
   targetDimension: 'width' | 'height';
   pageInterpolation: iPageInterpolation | undefined;
   animatedIndex: Animated.Value<number>;
+  numberOfPages: Animated.Value<number>;
+  loop: boolean;
 }
 
 function Page({
@@ -498,12 +533,20 @@ function Page({
   targetDimension,
   pageInterpolation,
   animatedIndex,
+  numberOfPages,
+  loop,
 }: iPage) {
   // compute the absolute position of the page based on index and dimension
   // this means that it's not relative to any other child, which is good because
   // it doesn't rely on a mechanism like flex, which requires all children to be present
   // to properly position pages
-  const position = memoize(multiply(index, dimension));
+  const position = memoize(
+    cond(
+      and(eq(index, 0), greaterThan(animatedIndex, sub(numberOfPages, 1))), // if we're in the last position of the loop, and we're calulcating the position for the first page
+      [multiply(numberOfPages, dimension)], // position the first item
+      multiply(index, dimension) // normal position
+    )
+  );
 
   // min-max the position based on clamp values
   // this means the <Page /> will have a container that is always positioned
@@ -519,14 +562,24 @@ function Page({
     // in the same place, but the inner view can be translated within these bounds
     transform: [
       {
-        [targetTransform]: translation,
+        [targetTransform]: position,
       },
     ],
   });
 
   // compute the relative offset value to the current animated index so
   // that <Page /> can use interpolation values that are in sync with drag gestures
-  const offset = memoize(sub(index, animatedIndex));
+  const absOffset = memoize(sub(index, animatedIndex));
+  const loopOffset = memoize(
+    block([
+      cond(
+        eq(index, 0),
+        modulo(abs(absOffset), sub(numberOfPages, 1)),
+        absOffset
+      ),
+    ])
+  );
+  const offset = memoize(cond(new Value(loop ? 1 : 0), loopOffset, absOffset));
 
   // apply interpolation configs to <Page />
   const interpolatedStyles = memoize(
@@ -760,6 +813,7 @@ function runSpring(
   clock: Animated.Clock,
   position: Animated.Value<number>,
   toValue: Animated.Node<number>,
+  numPages: Animated.Node<number>,
   springConfig?: Partial<SpringConfig>
 ) {
   const state = {
@@ -775,25 +829,42 @@ function runSpring(
     toValue: new Value(0),
   };
 
+  const calcToValue = proc((position, toValue, numPages) =>
+    block([
+      cond(
+        and(eq(toValue, 0), greaterOrEq(position, sub(numPages, 1))),
+        numPages,
+        toValue
+      ),
+    ])
+  );
+
+  const adjToValue = new Value(0);
+
   return block([
+    set(adjToValue, calcToValue(position, toValue, numPages)),
     cond(
       clockRunning(clock),
       [
-        cond(neq(config.toValue, toValue), [
+        cond(neq(config.toValue, adjToValue), [
           set(state.finished, 0),
-          set(config.toValue, toValue),
+          set(config.toValue, adjToValue),
         ]),
       ],
       [
         set(state.finished, 0),
         set(state.time, 0),
         set(state.velocity, 0),
-        set(config.toValue, toValue),
+        set(config.toValue, adjToValue),
         startClock(clock),
       ]
     ),
     spring(clock, state, config),
-    cond(state.finished, [stopClock(clock), set(state.position, position)]),
+    cond(state.finished, [
+      stopClock(clock),
+      set(toValue as any, modulo(toValue, numPages)),
+      set(state.position, toValue),
+    ]),
     state.position,
   ]);
 }
