@@ -160,9 +160,10 @@ function Pager({
     nextIndex,
     activeIndex,
     setActiveIndex,
+    content,
   } = useContext(PagerContext);
 
-  const numberOfScreens = Children.count(children);
+  const numberOfScreens = content ? content.length : 0;
   const animatedNumberOfScreens = memoize(new Value(numberOfScreens));
   animatedNumberOfScreens.setValue(numberOfScreens);
   const initialIndex = memoize(activeIndex);
@@ -354,13 +355,19 @@ function Pager({
           onChange?.(nextIndex);
         }),
       ]),
-      set(animatedValue, modulo(animatedValue, numberOfScreens)),
+      set(animatedValue, modulo(animatedValue, animatedNumberOfScreens)),
       animatedValue,
     ])
   );
 
-  const clampPrevValue = useAnimatedValue(clamp.prev, numberOfScreens + 1);
-  const clampNextValue = useAnimatedValue(clamp.next, numberOfScreens + 1);
+  const clampPrevValue = useAnimatedValue(
+    clamp.prev,
+    add(animatedNumberOfScreens, 1)
+  );
+  const clampNextValue = useAnimatedValue(
+    clamp.next,
+    add(animatedNumberOfScreens, 1)
+  );
 
   // stop child screens from translating beyond the bounds set by clamp props:
   const minimum = memoize(
@@ -626,10 +633,14 @@ function Page({
 // this is key for using memoized Animated.Values and prevents costly rerenders
 function useAnimatedValue(
   value?: number,
-  defaultValue = 0
+  defaultValue: number | Animated.Node<number> = 0
 ): Animated.Value<number> {
   const initialValue = value !== undefined ? value : defaultValue;
-  const animatedValue = memoize(new Value(initialValue));
+  const animatedValue = memoize(
+    typeof defaultValue === 'number'
+      ? new Value(initialValue as number)
+      : defaultValue
+  );
 
   useEffect(() => {
     if (value !== undefined) {
