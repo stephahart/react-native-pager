@@ -400,12 +400,16 @@ function Pager({
   // [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
   // adjacentOffset = 4,
   // initialIndex = 6
-  const childrenGroup = moduloJs(
-    Math.floor(
-      (activeIndex - (initialIndex % adjacentChildOffset)) / adjacentChildOffset
-    ),
-    numberOfScreens
-  );
+  const childrenGroup =
+    2 * adjacentChildOffset + 1 >= numberOfScreens
+      ? 0
+      : moduloJs(
+          Math.floor(
+            (activeIndex - (initialIndex % adjacentChildOffset)) /
+              adjacentChildOffset
+          ),
+          numberOfScreens
+        );
 
   const pages = useMemo(() => {
     // waiting for initial layout - except when testing
@@ -423,18 +427,15 @@ function Pager({
     // the current active child index into a smaller child array
     // TODO: render end of list if index = 0
     // inclusive
-    const startIndex = moduloJs(
-      activeIndex -
-        Math.min(adjacentChildOffset, Math.floor((numberOfScreens - 1) / 2)),
-      numberOfScreens
-    );
+    const startIndex =
+      2 * adjacentChildOffset + 1 >= numberOfScreens
+        ? 0
+        : moduloJs(activeIndex - adjacentChildOffset, numberOfScreens);
     // exclusive
-    const endIndex = moduloJs(
-      activeIndex +
-        Math.min(adjacentChildOffset, Math.ceil((numberOfScreens - 1) / 2)) +
-        1,
-      numberOfScreens
-    );
+    const endIndex =
+      2 * adjacentChildOffset + 1 >= numberOfScreens
+        ? numberOfScreens
+        : moduloJs(activeIndex + adjacentChildOffset + 1, numberOfScreens);
 
     let adjacentChildren;
     if (startIndex >= endIndex) {
@@ -455,7 +456,7 @@ function Pager({
 
       return (
         <Page
-          key={index}
+          key={`${index}-${child.props.content.content_id}`}
           index={index}
           animatedIndex={_animatedValue}
           minimum={minimum}
