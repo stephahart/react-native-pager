@@ -3,7 +3,6 @@ import React, {
   createContext,
   useContext,
   useEffect,
-  useMemo,
   useRef,
 } from 'react';
 import {
@@ -100,9 +99,7 @@ const {
   proc,
   startClock,
   spring,
-  timing,
   greaterOrEq,
-  debug,
 } = Animated;
 
 export interface iPager {
@@ -298,14 +295,14 @@ function Pager({
   const syncActiveIndex = memoize(() =>
     call([modulo(nextIndex, animatedNumberOfScreens)], ([idx]) => {
       activeIndexRef.current = idx;
-      //if (!activeIndexSyncRequested.current) {
-      activeIndexSyncRequested.current = true;
-      // InteractionManager.runAfterInteractions(() => {
-      activeIndexSyncRequested.current = false;
-      setActiveIndex(activeIndexRef.current);
-      onChange?.(activeIndexRef.current);
-      //});
-      //}
+      if (!activeIndexSyncRequested.current) {
+        activeIndexSyncRequested.current = true;
+        InteractionManager.runAfterInteractions(() => {
+          activeIndexSyncRequested.current = false;
+          setActiveIndex(activeIndexRef.current);
+          onChange?.(activeIndexRef.current);
+        });
+      }
     })
   );
 

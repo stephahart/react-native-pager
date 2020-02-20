@@ -1,6 +1,6 @@
 {
   "name": "@stephahart/react-native-pager",
-  "version": "1.0.8",
+  "version": "1.0.7",
   "main": "dist/index.js",
   "module": "dist/pager.esm.js",
   "typings": "dist/index.d.ts",
