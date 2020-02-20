@@ -1,13 +1,18 @@
 import React, {
   useState,
-  Children,
   createContext,
   useContext,
   useEffect,
   useMemo,
+  useRef,
 } from 'react';
-import { StyleSheet, LayoutChangeEvent, ViewStyle } from 'react-native';
-import Animated from 'react-native-reanimated';
+import {
+  StyleSheet,
+  LayoutChangeEvent,
+  ViewStyle,
+  InteractionManager,
+} from 'react-native';
+import Animated, { Easing } from 'react-native-reanimated';
 import {
   PanGestureHandler,
   State,
@@ -95,6 +100,7 @@ const {
   proc,
   startClock,
   spring,
+  timing,
   greaterOrEq,
   debug,
 } = Animated;
@@ -173,6 +179,8 @@ function Pager({
   const dragX = memoize(new Value(0));
   const dragY = memoize(new Value(0));
   const gestureState = memoize(new Value(0));
+  const activeIndexSyncRequested = useRef(false);
+  const activeIndexRef = useRef(-1);
 
   const handleGesture = memoize(
     event(
@@ -286,6 +294,21 @@ function Pager({
   // this value is used to compute the transformations of the container screen
   // its also used to compute the offsets of child screens, and any other consumers
   const prevIdx = memoize(new Value(initialIndex));
+
+  const syncActiveIndex = memoize(() =>
+    call([modulo(nextIndex, animatedNumberOfScreens)], ([idx]) => {
+      activeIndexRef.current = idx;
+      //if (!activeIndexSyncRequested.current) {
+      activeIndexSyncRequested.current = true;
+      // InteractionManager.runAfterInteractions(() => {
+      activeIndexSyncRequested.current = false;
+      setActiveIndex(activeIndexRef.current);
+      onChange?.(activeIndexRef.current);
+      //});
+      //}
+    })
+  );
+
   const _animatedValue = memoize(
     block([
       cond(
@@ -343,18 +366,13 @@ function Pager({
               animatedValue,
               nextIndex,
               animatedNumberOfScreens,
-              springConfig
+              springConfig,
+              syncActiveIndex
             )
           ),
         ]
       ),
-      cond(not(eq(prevIdx, nextIndex)), [
-        set(prevIdx, nextIndex),
-        call([modulo(nextIndex, animatedNumberOfScreens)], ([nextIndex]) => {
-          setActiveIndex(nextIndex);
-          onChange?.(nextIndex);
-        }),
-      ]),
+      cond(not(eq(prevIdx, nextIndex)), [set(prevIdx, nextIndex)]),
       set(animatedValue, modulo(animatedValue, animatedNumberOfScreens)),
       animatedValue,
     ])
@@ -397,21 +415,7 @@ function Pager({
   const defaultContainerStyle =
     style && style.height ? { height: style.height } : undefined;
 
-  // [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-  // adjacentOffset = 4,
-  // initialIndex = 6
-  const childrenGroup =
-    2 * adjacentChildOffset + 1 >= numberOfScreens
-      ? 0
-      : moduloJs(
-          Math.floor(
-            (activeIndex - (initialIndex % adjacentChildOffset)) /
-              adjacentChildOffset
-          ),
-          numberOfScreens
-        );
-
-  const pages = useMemo(() => {
+  const pages = () => {
     // waiting for initial layout - except when testing
     if (width === UNSET) {
       return null;
@@ -472,7 +476,7 @@ function Pager({
         </Page>
       );
     });
-  }, [children, width, childrenGroup]);
+  };
 
   // extra Animated.Views below may seem redundant but they preserve applied styles e.g padding and margin
   // of the page views
@@ -511,7 +515,7 @@ function Pager({
                   transform: [{ [targetTransform]: containerTranslation }],
                 }}
               >
-                {pages}
+                {pages()}
               </Animated.View>
             </Animated.View>
           </Animated.View>
@@ -535,7 +539,7 @@ interface iPage {
   loop: boolean;
 }
 
-function Page({
+const Page = React.memo(function({
   children,
   index,
   minimum,
@@ -628,7 +632,7 @@ function Page({
       </Animated.View>
     </Animated.View>
   );
-}
+});
 
 // utility to update animated values without changing their reference
 // this is key for using memoized Animated.Values and prevents costly rerenders
@@ -862,7 +866,8 @@ function runSpring(
   position: Animated.Value<number>,
   toValue: Animated.Node<number>,
   numPages: Animated.Node<number>,
-  springConfig?: Partial<SpringConfig>
+  springConfig?: Partial<SpringConfig>,
+  onEnd?: () => Animated.Node<any>
 ) {
   const state = {
     finished: new Value(0),
@@ -888,21 +893,21 @@ function runSpring(
   );
 
   const adjToValue = new Value(0);
+  const prev = new Value(-1);
+
+  const updateActiveValue = () =>
+    cond(neq(prev, config.toValue), [set(prev, toValue), onEnd?.()]);
 
   return block([
     set(adjToValue, calcToValue(position, toValue, numPages)),
     cond(
       clockRunning(clock),
-      [
-        cond(neq(config.toValue, adjToValue), [
-          set(state.finished, 0),
-          set(config.toValue, adjToValue),
-        ]),
-      ],
+      0, // this never happens because we stop the clock when the user starts swiping
       [
         set(state.finished, 0),
         set(state.time, 0),
         set(state.velocity, 0),
+        updateActiveValue(),
         set(config.toValue, adjToValue),
         startClock(clock),
       ]
@@ -912,6 +917,7 @@ function runSpring(
       stopClock(clock),
       set(toValue as any, modulo(toValue, numPages)),
       set(state.position, toValue),
+      updateActiveValue(),
     ]),
     state.position,
   ]);
